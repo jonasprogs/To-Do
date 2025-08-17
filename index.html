@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Taskflow — Aufgaben</title>
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Top bar -->
+      <header class="topbar" role="banner">
+        <div class="segmented" role="tablist" aria-label="Bereich wählen">
+          <button id="wsPrivateBtn" role="tab" aria-selected="true" data-ws="private">Privat</button>
+          <button id="wsWorkBtn" role="tab" aria-selected="false" data-ws="work">Arbeit</button>
+        </div>
+        <div class="top-actions">
+          <button id="modeToggle" aria-label="Hell/Dunkel umschalten" title="Hell/Dunkel">◑</button>
+          <button id="exportBtn" aria-label="Export/Import" title="Export/Import">⇅</button>
+          <button id="searchBtn" aria-label="Suche" title="Suche">🔎</button>
+        </div>
+      </header>
+
+      <!-- Selection toolbar (batch actions) -->
+      <div id="multiToolbar" class="multi-toolbar" aria-hidden="true">
+        <span id="multiCount">0</span> ausgewählt
+        <div class="spacer"></div>
+        <button id="batchCompleteBtn" class="ghost">Erledigen</button>
+        <button id="batchSnoozeBtn" class="ghost">Snooze +1</button>
+        <button id="batchDeleteBtn" class="danger">Löschen</button>
+        <button id="multiCloseBtn" class="ghost">Fertig</button>
+      </div>
+
+      <!-- Content -->
+      <main id="content" role="main">
+        <!-- Inbox -->
+        <section id="view-inbox" data-view="inbox" aria-label="Inbox"></section>
+
+        <!-- Today -->
+        <section id="view-today" data-view="today" class="hidden" aria-label="Heute">
+          <div class="summary">
+            <strong>Heute</strong>
+            <div id="todayTotals" class="totals"></div>
+          </div>
+          <div id="todayList" class="list"></div>
+        </section>
+
+        <!-- Planned -->
+        <section id="view-planned" data-view="planned" class="hidden" aria-label="Geplant">
+          <div id="plannedGroups"></div>
+        </section>
+
+        <!-- Projects (work only) -->
+        <section id="view-projects" data-view="projects" class="hidden" aria-label="Projekte">
+          <div class="header-row">
+            <h2>Projekte</h2>
+            <button id="addProjectBtn" class="primary small">+ Projekt</button>
+          </div>
+          <div id="projectList" class="cards"></div>
+        </section>
+
+        <!-- Search -->
+        <section id="view-search" data-view="search" class="hidden" aria-label="Suche">
+          <div class="search-bar">
+            <input id="searchInput" type="search" placeholder="Suchen (Titel, Notizen, Tags, Projekt)" autocomplete="off">
+          </div>
+          <div id="searchResults" class="list"></div>
+        </section>
+
+        <!-- Project detail -->
+        <section id="view-project-detail" data-view="project-detail" class="hidden" aria-label="Projekt-Details">
+          <div class="header-row">
+            <button id="projectBackBtn" class="ghost">← Zurück</button>
+            <h2 id="projectTitle">Projekt</h2>
+            <div class="spacer"></div>
+          </div>
+          <div id="projectMeta" class="meta-row"></div>
+          <div class="subtabs">
+            <button class="subtab active" data-subtab="tasks">Aufgaben</button>
+            <button class="subtab" data-subtab="gantt">Timeline</button>
+          </div>
+          <div id="projectTasks" class="list"></div>
+          <div id="projectGantt" class="gantt hidden"></div>
+        </section>
+      </main>
+
+      <!-- Quick add -->
+      <div class="quickadd" role="region" aria-label="Schnell hinzufügen">
+        <input id="quickInput" type="text" placeholder="Neue Aufgabe… (Enter)">
+        <button id="quickAddBtn" class="primary" aria-label="Aufgabe hinzufügen">+</button>
+      </div>
+
+      <!-- Bottom nav -->
+      <nav class="bottombar" role="tablist" aria-label="Navigation">
+        <button class="tab active" data-view="inbox" role="tab" aria-selected="true">Inbox</button>
+        <button class="tab" data-view="today" role="tab" aria-selected="false">Heute</button>
+        <button class="tab" data-view="planned" role="tab" aria-selected="false">Geplant</button>
+        <button class="tab work-only" data-view="projects" role="tab" aria-selected="false">Projekte</button>
+        <button class="tab" data-view="search" role="tab" aria-selected="false">Alle</button>
+      </nav>
+
+      <!-- Edit sheet -->
+      <div id="sheet" class="sheet" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Aufgabe bearbeiten">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <form id="taskForm">
+          <input type="hidden" id="taskId">
+          <label>Titel<span class="req">*</span>
+            <input id="taskTitle" required type="text" placeholder="Titel eingeben">
+          </label>
+          <div class="row">
+            <label>Dauer (Min)
+              <input id="taskEstimate" type="number" min="0" step="5" placeholder="z. B. 30">
+            </label>
+            <label>Priorität
+              <select id="taskPriority">
+                <option value="">—</option>
+                <option value="1">Hoch</option>
+                <option value="2">Mittel</option>
+                <option value="3">Niedrig</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Datum
+              <input id="taskDate" type="date">
+            </label>
+            <label>Uhrzeit
+              <input id="taskTime" type="time">
+            </label>
+          </div>
+          <div id="workOnlyFields" class="hidden">
+            <label>Projekt (Kunde)
+              <select id="taskProject"></select>
+            </label>
+          </div>
+          <label>Tags (Komma-getrennt)
+            <input id="taskTags" type="text" placeholder="z. B. wichtig, home">
+          </label>
+          <label>Notizen
+            <textarea id="taskNotes" rows="3" placeholder="Details…"></textarea>
+          </label>
+
+          <details id="subtasksBlock" class="hidden">
+            <summary>Unteraufgaben</summary>
+            <div id="subtaskList"></div>
+            <div class="subtask-add">
+              <input id="subtaskTitleInput" type="text" placeholder="Unteraufgabe…">
+              <input id="subtaskEstInput" type="number" min="0" step="5" placeholder="Min">
+              <button id="addSubtaskBtn" type="button" class="ghost small">+ Hinzufügen</button>
+            </div>
+          </details>
+
+          <div class="chips">
+            <button type="button" class="chip" data-snooze="today">+Heute</button>
+            <button type="button" class="chip" data-snooze="tomorrow">+Morgen</button>
+            <button type="button" class="chip" data-snooze="nextweek">+Nächste Woche</button>
+            <span class="spacer"></span>
+            <button type="button" class="chip" data-est="15">15m</button>
+            <button type="button" class="chip" data-est="25">25m</button>
+            <button type="button" class="chip" data-est="30">30m</button>
+            <button type="button" class="chip" data-est="45">45m</button>
+            <button type="button" class="chip" data-est="60">60m</button>
+          </div>
+
+          <div class="row mt">
+            <button id="saveTaskBtn" class="primary" type="submit">Speichern</button>
+            <button id="completeTaskBtn" type="button" class="ghost">Erledigt</button>
+            <button id="deleteTaskBtn" type="button" class="danger">Löschen</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Export/Import modal -->
+      <dialog id="exportDialog">
+        <form method="dialog">
+          <h3>Export/Import</h3>
+          <div class="row">
+            <button id="doExportBtn" class="primary" value="export">Export JSON</button>
+            <input id="importFile" type="file" accept="application/json">
+            <button id="doImportBtn" class="ghost" value="import">Importieren</button>
+          </div>
+          <p class="muted">Tipp: Export-Datei sicher speichern.</p>
+          <button value="close">Schließen</button>
+        </form>
+      </dialog>
+
+      <!-- Toast -->
+      <div id="toast" role="status" aria-live="polite" class="toast hidden"></div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
